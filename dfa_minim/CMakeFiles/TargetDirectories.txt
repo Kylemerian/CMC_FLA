@@ -1,0 +1,7 @@
+/home/bel/dfa_minim/CMakeFiles/install/strip.dir
+/home/bel/dfa_minim/CMakeFiles/install/local.dir
+/home/bel/dfa_minim/CMakeFiles/install.dir
+/home/bel/dfa_minim/CMakeFiles/list_install_components.dir
+/home/bel/dfa_minim/CMakeFiles/rebuild_cache.dir
+/home/bel/dfa_minim/CMakeFiles/edit_cache.dir
+/home/bel/dfa_minim/CMakeFiles/dfa_minim.dir

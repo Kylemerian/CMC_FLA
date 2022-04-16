@@ -1,0 +1,30 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/bel/dfa_minim/api.hpp
+string
+-
+set
+-
+
+/home/bel/dfa_minim/task.cpp
+api.hpp
+/home/bel/dfa_minim/api.hpp
+string
+-
+set
+-
+algorithm
+-
+iostream
+-
+vector
+-
+queue
+-
+
