@@ -9,7 +9,7 @@
 std::vector<std::set<std::string>> P1;
 
 void split(std::set<std::string>& R, std::pair <std::set<std::string>, char>& C,
-    std::set<std::string>& R1, std::set<std::string>& R2, DFA &dfa) {
+    std::set<std::string>& R1, std::set<std::string>& R2, DFA &dfa) {   // R = R1 + R2
 
     for(auto ri : R) {
         int flag = 0;
@@ -26,7 +26,7 @@ void split(std::set<std::string>& R, std::pair <std::set<std::string>, char>& C,
 }
 
 void replace(std::set<std::string>& R, std::set<std::string>& R1,
-    std::set<std::string>& R2, std::vector<std::set<std::string>>& P) {
+    std::set<std::string>& R2, std::vector<std::set<std::string>>& P) {     //R -> R1 R2
     
     
     P1.erase(find(P1.begin(), P1.end(), R));
@@ -35,6 +35,12 @@ void replace(std::set<std::string>& R, std::set<std::string>& R1,
 }
 
 DFA dfa_minim(DFA &d) {
+    d.create_state("void");
+    for(auto i : d.get_states()){
+        for(char c :d.get_alphabet().to_string())
+            if(!d.has_trans(i, c))
+                d.set_trans(i, c, "void");
+    }
     std::vector<std::set<std::string>> P;
     std::set<std::string> states = d.get_states();
     std::set<std::string> final = d.get_final_states();
@@ -60,8 +66,7 @@ DFA dfa_minim(DFA &d) {
         for(auto R : P)
             S.push_back(std::make_pair(R, c));
     P1 = P;
-    while(!S.empty()) {
-        //std::cout << S.size() << " q size\n";
+    while(!S.empty()) { //classification
         std::pair <std::set<std::string>, char> C;
         C = S.front();
         S.erase(S.begin());
@@ -112,40 +117,47 @@ DFA dfa_minim(DFA &d) {
             d.delete_state(state);
         }
     }
-
-    for(auto state : d.get_states()){
-        int flag = 0;
-        int flag2 = 0;
-        if(d.is_final(state))
-            continue;
-        for(char c : alpha){
-            if(d.has_trans(state, c))
-                if(d.get_trans(state, c) != state)
-                    flag = 1;
-        }
-
-        for(auto state2 : d.get_states()){
-            if(state == state2)
+    
+    int deleted = 1;
+    while(deleted){
+        deleted = 0;
+        for(auto state : d.get_states()){
+            if(d.is_initial(state))
                 continue;
-            for(char c : alpha){
-                if(!d.has_trans(state2, c))
+            //std::cout << "state:" << state <<"\n";
+            int flag = 0; //isout
+            int flag2 = 0; //isin
+            for(char c : alpha){        //out node
+                if(d.has_trans(state, c))
+                    if(d.get_trans(state, c) != state)
+                        flag = 1;
+            }
+
+            for(auto state2 : d.get_states()){   //in node
+                if(state == state2)
                     continue;
-                if(d.get_trans(state2, c) == state)
-                    flag2 = 1;
+                for(char c : alpha){
+                    if(!d.has_trans(state2, c))
+                        continue;
+                    if(d.get_trans(state2, c) == state)
+                        flag2 = 1;
+                }
+            }
+
+            if(!((flag && flag2) || (flag2 && !flag && d.is_final(state)) || (flag && d.is_initial(state)))){
+                d.delete_state(state);
+                deleted = 1;
             }
         }
-
-        if(flag || flag2)
-            d.delete_state(state);
     }
+/*
 
-    std::string newalpha = "";
+    std::string newalpha = "";  //make new alpha
 
     for(char ch : alpha){
         int fl = 0;
         for (auto state : d.get_states()){
             if(d.has_trans(state, ch)){
-                std::cout << state << ch << d.get_trans(state, ch) << "\n";
                 fl = 1;
             }
         }
@@ -154,9 +166,9 @@ DFA dfa_minim(DFA &d) {
     }
 
     DFA newd(newalpha);
-    std::cout << newalpha << "\n";
+    //std::cout << newalpha << "\n";
     
-    for(auto state : d.get_states()){
+    for(auto state : d.get_states()){       //copy states
         newd.create_state(state);
         if(d.is_final(state))
             newd.make_final(state);
@@ -164,7 +176,7 @@ DFA dfa_minim(DFA &d) {
             newd.set_initial(state);
     }
 
-    for(auto state1 : d.get_states()){
+    for(auto state1 : d.get_states()){      //copy trans
         for(auto state2 : d.get_states()){
             for(char c : newalpha){
                 if(d.has_trans(state1, c))
@@ -172,7 +184,7 @@ DFA dfa_minim(DFA &d) {
                         newd.set_trans(state1, c ,state2);
             }
         }
-    }
+    }*/
     
-    return newd;
+    return /*new*/d;
 }
