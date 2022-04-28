@@ -4,8 +4,8 @@ set(CMAKE_DEPENDS_LANGUAGES
   )
 # The set of files for implicit dependencies of each language:
 set(CMAKE_DEPENDS_CHECK_CXX
-  "/home/bel/fla/re2dfa/main.cpp" "/home/bel/fla/re2dfa/CMakeFiles/re2dfa.dir/main.cpp.o"
-  "/home/bel/fla/re2dfa/task.cpp" "/home/bel/fla/re2dfa/CMakeFiles/re2dfa.dir/task.cpp.o"
+  "/home/bel/CMC_FLA/re2dfa/main.cpp" "/home/bel/CMC_FLA/re2dfa/CMakeFiles/re2dfa.dir/main.cpp.o"
+  "/home/bel/CMC_FLA/re2dfa/task.cpp" "/home/bel/CMC_FLA/re2dfa/CMakeFiles/re2dfa.dir/task.cpp.o"
   )
 set(CMAKE_CXX_COMPILER_ID "GNU")
 

@@ -4,8 +4,16 @@
 #include <stack>
 #include <algorithm>
 #include <vector>
+#include <map>
+#include <set>
 
-std::string poss[1000];
+int cnt = 0;
+
+std::map <int , std::string> poses;
+
+int isAlpha(char c){
+    return ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z'));
+}
 
 struct Tree {
 	std::string sym;
@@ -15,24 +23,17 @@ struct Tree {
 	Tree * right;
 	Tree * left;
 	int id;
+	Tree(std::string s){
+		right = nullptr;
+		left = nullptr;
+		sym = s;
+		id = -1;
+		if(isAlpha(s[0]) || s == "#"){
+			id = cnt;
+			cnt++;
+		}
+	}
 };
-
-int isAlpha(char c){
-    return (c >= 'a' && c <= 'z' || c >= '0' && c <= '9' || c >= 'A' && c <= 'Z');
-}
-
-std::string trns(std::string s) {
-    std::string res = "";
-    for(int i = 0; i < s.size()-1; i++) {
-        res += s[i];
-        if(isAlpha(s[i]) && isAlpha(s[i+1]) || isAlpha(s[i]) && s[i+1] == '('
-            || isAlpha(s[i+1]) && s[i] == ')' || isAlpha(s[i+1]) && s[i] == '*'
-			|| s[i] == ')' && s[i+1] == '(')
-            res += "&";
-    }
-    res += s[s.size() - 1];
-    return res;
-}
 
 class Syntaxer {
 	std::string s;
@@ -40,12 +41,12 @@ class Syntaxer {
 	std::stack<std::string> RPN;
 	std::stack<std::string> RPNrev;
 	std::stack<Tree *> stack;
-	int cnt;
+	int cntc;
 	int id;
 	char ch;
 	void setChar() {
-		cnt++;
-		ch =  s[cnt - 1];
+		cntc++;
+		ch =  s[cntc - 1];
 	}
 	void S() {
 		T();
@@ -67,282 +68,326 @@ class Syntaxer {
 
 	void V() {
 		Q();
-		if(ch == '*') {
+		if(ch == '*'){
 			setChar();
 			RPN.push("*");
 		}
 	}
 
 	void Q() {
-		if(ch == '('){
+		if(isAlpha(ch) || ch == '^'){
+			std::string tmp = "";
+			tmp += ch;
+			RPN.push(tmp);
+			setChar();
+		}
+		else if(ch == '('){
 			setChar();
 			S();
 			if(ch == ')')
 				setChar();
 		}
-		else if(isAlpha(ch)) {
-			std::string tmp = "";
-			tmp += ch;
-			//std::cout << ch << "\n";
-			RPN.push(tmp);
-			setChar();
-		}
 	}
 
 public:
-	void start() {
-		std::cout << "string: " << s << "\n";
+	void start(std::set<int> follow[]) {
+		//std::cout << "string: " << s << "\n";
 		setChar();
 		S();
-	}
-	Tree * getTree() {return tree;}
-	Syntaxer(std::string str) {
-		s = trns(str);
-		cnt = 0;
-		id = 0;
-	}
-	void makeTree() {
 		while(!RPN.empty()) {
 			std::string tmp = RPN.top();
-			//std::cout << tmp;
 			RPN.pop();
 			RPNrev.push(tmp);
 		}
-		/*while(!RPNrev.empty()){
-			std::cout << RPNrev.top();
-			RPNrev.pop();
-		}*/
 
-		while(!RPNrev.empty()) {
+		while(!RPNrev.empty()){
 			std::string tmp = RPNrev.top();
 			RPNrev.pop();
-			Tree * node = new Tree;
-			if(tmp != "&" && tmp != "*" && tmp != "|" && tmp != ""){
-				node -> id = id;
-				poss[id] = tmp;
-				id++;
+
+			Tree * node = new Tree(tmp);
+
+			if(node -> sym == "*") {
+				Tree * left = stack.top();
+				stack.pop();
+				node -> left = left;
+				node -> nullable = 1;
+				for(auto i : node -> left -> first)
+					node -> first.insert(i);
+				for(auto i : node -> left -> last)
+					node -> last.insert(i);
+				
+				for(auto i : node -> left -> last)
+					for(auto j : node -> left -> first)
+						follow[i].insert(j);
 			}
-			else
-				node -> id = -id;
+			else if(node -> sym == "|"){
+				Tree * right = stack.top();
+				stack.pop();
+				node -> right = right;
+				Tree * left = stack.top();
+				stack.pop();
+				node -> left = left;
+				node -> nullable = node -> left -> nullable | right -> nullable;
+				/**/
+				for(auto i : node -> left -> first)
+					node -> first.insert(i);
+				for(auto i : node -> left -> last)
+					node -> last.insert(i);
+				for(auto i : node -> right -> first)
+					node -> first.insert(i);
+				for(auto i : node -> right -> last)
+					node -> last.insert(i);
+			}
+			else if(node -> sym == "&"){
+				Tree * right = stack.top();
+				stack.pop();
+				node -> right = right;
+				Tree * left = stack.top();
+				stack.pop();
+				node -> left = left;
+				node -> nullable = node -> right -> nullable * node -> left -> nullable;
+				/**/
+				for(auto i : node -> left -> first)
+					node -> first.insert(i);
+				if(node -> left -> nullable)
+					for(auto i : node -> right -> first)
+						node -> first.insert(i);
+				
+				for(auto i : node -> right -> last)
+					node -> last.insert(i);
+				if(node -> right -> nullable)
+					for(auto i : node -> left -> last)
+						node -> last.insert(i);
+
+				for(auto i : node -> left -> last)
+					for(auto j : node -> right -> first)
+						follow[i].insert(j);
+				
+			}
+			else if(node -> sym == "^"){
+				node -> nullable = 1;
+			}else if(isAlpha(node -> sym[0])){
+				node -> nullable = 0;
+				node -> first.insert(node -> id);
+				node -> last.insert(node -> id);
+			}
 			
-			node -> sym = tmp;
-			if (tmp == "*") {
-				Tree * l = stack.top();
-				stack.pop();
-				node -> left = l;
-				node -> right = nullptr;
-				stack.push(node);
-			} else if (tmp == "|") {
-				Tree * l = stack.top();
-				stack.pop();
-				Tree * r;
-				if(!stack.empty()){
-					r = stack.top();
-					stack.pop();
-				} else {
-					r = new Tree;
-					r -> sym = "";
-					r -> id = -id;
-				}
-				node -> left = l; 
-				node -> right = r;
-				stack.push(node);
-			} else if (tmp == "&") {
-				Tree * r = stack.top();
-				stack.pop();
-				Tree * l = stack.top();
-				stack.pop(); 
-				node -> left = l;
-				node -> right = r;
-				stack.push(node);
-			} else {
-				node -> right = nullptr;
-				node -> left = nullptr;
-				stack.push(node);
-			}
+			stack.push(node);
 		}
+
 		tree = stack.top();
 		
-		Tree * temp = new Tree;
-		temp -> left = tree;
-		temp -> right = new Tree;
-		temp -> sym = "&";
-		temp -> id = -100;
-		temp -> right -> sym = "#";
-		temp -> right -> id = id;
-		temp -> right -> left = nullptr;
-		temp -> right -> right = nullptr;
-		tree = temp;
-		poss[id] = "#";
+	}
+
+	Syntaxer(std::string s1){
+		s = s1;
+		cntc = 0;
+		id = 0;
+	}
+
+	Tree * getTree(std::set<int> follow[]){
+		Tree * tr = new Tree("#");
+		tr -> nullable = 0;
+		tr -> last.insert(tr -> id);
+		tr -> first.insert(tr -> id);
+		Tree * node = new Tree("&");
+		node -> nullable = 0;
+		node -> left = tree;
+		node -> right = tr;
+		for(auto i : node -> left -> first)
+			node -> first.insert(i);
+		if(node -> left -> nullable)
+			for(auto i : node -> right -> first)
+				node -> first.insert(i);
+				
+		for(auto i : node -> right -> last)
+			node -> last.insert(i);
+		if(node -> right -> nullable)
+			for(auto i : node -> left -> last)
+				node -> last.insert(i);
+
+		for(auto i : node -> left -> last)
+			for(auto j : node -> right -> first)
+				follow[i].insert(j);
+		return node;
+	}
+
+	void printTree(Tree * n) {
+		std::cout << n -> id << " " << n -> sym << " " << n -> nullable;
+		if(n -> left)
+			std::cout << " left: " << n -> left -> id << " right: ";
+		if(n -> right)
+			std::cout << n -> right -> id << " ";
+		std::cout << " \t\t\tfirst: ";
+		for(auto i : n -> first)
+			std::cout << i << " ";
+		std::cout << "||| ";
+		std::cout << "last: ";
+		for(auto i : n -> last)
+			std::cout << i << " ";
+		std::cout << "\n";
+		
+		if(n -> left)
+			printTree(n -> left);
+		if(n -> right)
+			printTree(n -> right);
 	}
 };
 
-void setTree(Tree * tr, std::set<int> follow[]) {
-	if(tr -> left)
-		setTree(tr -> left, follow);
-	if(tr -> right)
-		setTree(tr -> right, follow);
-	if(tr -> sym == "*") {
-		tr -> nullable = 1;
-		for(auto i : tr -> left -> first)
-			tr -> first.insert(i);
-		for(auto i : tr -> left -> last)
-			tr -> last.insert(i);
+std::string trans(std::string s1){
+	std::string res = "";
+    for(int i = 0; i < s1.size()-1; i++) {
+        res += s1[i];
+        if(    (isAlpha(s1[i]) && isAlpha(s1[i+1]))
+			|| ((isAlpha(s1[i]) || s1[i] == '^') && s1[i+1] == '(')
+            || ((isAlpha(s1[i+1]) || s1[i+1] == '^') && s1[i] == ')')
+			|| ((isAlpha(s1[i+1]) || s1[i+1] == '^') && s1[i] == '*')
+			|| (s1[i] == ')' && s1[i+1] == '(')
+			|| (s1[i] == '*' && s1[i+1] == '('))
+            res += "&";
+    }
+    res += s1[s1.size() - 1];
+    return res;
+}
 
-		for(auto i : tr -> left -> last)
-			for(auto j : tr -> left -> first){
-				follow[i].insert(j);
-			}
-	} else if(tr -> sym == "|") {
-		tr -> nullable = tr -> left -> nullable | tr -> right -> nullable;
-		for(auto i : tr -> left -> first)
-			tr -> first.insert(i);
-		for(auto i : tr -> left -> last)
-			tr -> last.insert(i);
-		for(auto i : tr -> right -> first)
-			tr -> first.insert(i);
-		for(auto i : tr -> right -> last)
-			tr -> last.insert(i);
-	} else if(tr -> sym == "&") {
-		tr -> nullable = tr -> left -> nullable * tr -> right -> nullable;
-		for(auto i : tr -> left -> first)
-			tr -> first.insert(i);
-		if(tr -> left -> nullable){
-			for(auto i : tr -> right -> first)
-				tr -> first.insert(i);
-		}
-		for(auto i : tr -> right -> last)
-			tr -> last.insert(i);
-		if(tr -> right -> nullable){
-			for(auto i : tr -> left -> last)
-				tr -> last.insert(i);
-		}
+std::string addEps(std::string t){
+	std::string res = "";
+	for(int i = 0; i < t.size()-1; i++){
+		res += t[i];
+		if(t[i] == '(' && t[i+1] == ')'
+			|| t[i] == '|' && t[i+1] == ')'
+			|| t[i] == '(' && t[i+1] == '|'
+			|| t[i] == '|' && t[i+1] == '|'
+			|| t[i] == '*' && t[i+1] == '*'
+			|| t[i] == '|' && t[i+1] == '*'
+			|| t[i] == '(' && t[i+1] == '*')
+			res += '^';
+	}
+    res += t[t.size() - 1];
+    return res;
+}
 
-		for(auto i : tr -> left -> last)
-			for(auto j : tr -> right -> first){
-				follow[i].insert(j);
-			}
-	} else {
-		if(tr -> sym != "") {
-			tr -> nullable = 0;
-			tr -> last.insert(tr -> id);
-			tr -> first.insert(tr -> id);
-		}
-		else {
-			tr -> nullable = 1;
+void setPoses(std::string s) {
+	int id = 0;
+	for(char c : s){
+		if(isAlpha(c)){
+			std::string tmp = "";
+			tmp += c;
+			poses[id] = tmp;
+			id++;
 		}
 	}
+	poses[id] = "#";
+
+	/*
+	for(auto i : poses){
+		std::cout << i.first << " ";
+		for(auto j : i.second)
+			std::cout << j << " ";
+		std::cout << "\n";
+	}*/
 }
 
-void printTree(Tree * tree) {
-	if(tree -> left)
-		printTree(tree -> left);
-	if(tree -> right)
-		printTree(tree -> right);
-	std :: cout << tree -> sym << " id:" << tree -> id << " " << tree -> nullable << "\n";
-	if(tree -> left)
-		std::cout << "left: " << tree -> left -> id << "\n";
-	if(tree -> right)
-		std::cout << "right: " << tree -> right -> id << "\n\n";
-	for(auto i : tree -> first)
-		std::cout << "first: " << i << "\n";
-	for(auto i : tree -> last)
-		std::cout << "last: " << i << "\n";
-	std::cout << "\n";
-}
+int isExistState(std::set<std::pair<std::string, std::set<int>>> & states,
+	std::pair<std::string, std::set<int>>& followp){
 
-int lenStr(std::string s) {
 	int res = 0;
-	for(int i = 0; i < s.length(); i++) {
-		if(isAlpha(s[i]))
-			res++;
+	for(auto i : states){
+		if(followp.second == i.second){
+			res = 1;
+			break;
+		}
 	}
 	return res;
 }
 
-std::string findIndex(std::vector<std::set<int>> & a, std::set<int> & b) {
-	for(int i = 0; i < a.size(); i++)
-		if(a[i] == b)
-			return std::to_string(i);
-	return "-1";
+int lenStr(std::string s){
+	int res = 0;
+	for(char c : s)
+		if(isAlpha(c))
+			res++;
+	return res;
+}
+
+std::string findName(std::set<std::pair<std::string, std::set<int>>> & states,
+	std::pair<std::string, std::set<int>>& followp){
+
+	for(auto i : states){
+		if(followp.second == i.second)
+			return i.first;
+	}
 }
 
 DFA re2dfa(const std::string &s) {
-	int cnt = 0;
-	Tree * tree;
-	Syntaxer syntaxer(s);
-	std::set<int> follow[lenStr(s) + 1];
-	syntaxer.start();
-	syntaxer.makeTree();
-	tree = syntaxer.getTree();
-	setTree(tree, follow);
-	//printTree(tree);
-	/*for(int i = 0; i < lenStr(s) + 1; i++){
-		std:: cout << i << ": ";
-		for(auto j : follow[i])
-			std::cout << j << " ";
-		std::cout << "\n";
-	}*/
-	std::vector<std::set<int>> stnames;
-
+	int stname = 0;
+	Syntaxer syntaxer(trans(addEps(s)));
+	setPoses(s);
+	std::set<int> follow[lenStr(s)]; //+1
+	syntaxer.start(follow);
+	Tree * tree = syntaxer.getTree(follow);
+	//syntaxer.printTree(tree);
 	DFA res = DFA(Alphabet(s));
-	std::set<std::set<int>> states;
-	std::set<std::set<int>> marked;
-	std::set<int> q;
+
+	std::pair<std::string, std::set<int>> q;
+	q.first = std::to_string(stname);
 	for(auto i : tree -> first)
-		q.insert(i);
+		q.second.insert(i);
+	stname++;
+	
+	
+
+	std::set<std::pair<std::string, std::set<int>>> states;
+	std::set<std::pair<std::string, std::set<int>>> marked;
 	states.insert(q);
-	stnames.push_back(q);
-	res.create_state("0");
-	res.set_initial("0");
-	for(auto i : states){
-		if(marked.find(i) != marked.end())
-			continue;
+	res.create_state(q.first);
+	res.set_initial(q.first);
+	for(int iii = 0; iii < 2; iii++)
+		for(auto i : states){
+			if(marked.find(i) != marked.end())
+				continue;
 
-		std::set<int> temp;
-		for(auto m : i)
-			temp.insert(m);
-		marked.insert(temp);
+			std::pair<std::string, std::set<int>> temp;
+			for(auto m : i.second)
+				temp.second.insert(m);
+			temp.second = i.second;
+			marked.insert(temp);
 
-		for(auto c : Alphabet(s).to_string()){
-			std::set<int> followp;
-			for(auto j : i){
-				std::string temp = "";
-				temp += c;
-				if(poss[j] == temp){
-					for(auto u : follow[j])
-						followp.insert(u);
+			for(auto c : Alphabet(s).to_string()){
+				std::pair<std::string, std::set<int>> followp;
+				for(auto j : i.second){
+					std::string tstr = "";
+					tstr += c; 
+					if(poses[j] == tstr){
+						for(auto u : follow[j])
+							followp.second.insert(u);
+					}
+				}
+
+				if(!followp.second.empty()){
+					if(!isExistState(states, followp)){
+						followp.first = std::to_string(stname);
+						stname++;
+						states.insert(followp);
+						res.create_state(followp.first);
+						std::cout << "create: " << followp.first << "\n";
+					}
+					std::cout << i.first << " " << c << " " << findName(states, followp) << "\n";
+					res.set_trans(i.first, c, findName(states, followp));
 				}
 			}
-			if(!followp.empty()){
-				if(states.find(followp) == states.end()){
-					states.insert(followp);
-					stnames.push_back(followp);
-					res.create_state(std::to_string(stnames.size() - 1));
-				}
-				res.set_trans( findIndex(stnames, i), c, findIndex(stnames, followp) );
-			}
+			
 		}
-	}
 
-	/*for(auto i : states){
+	for(auto i : follow){
 		for(auto j : i)
 			std::cout << j << " ";
 		std::cout << "\n";
 	}
-	for(auto i : stnames){
-		for(auto j : i)
-			std::cout << j << " ";
-		std::cout << "\n";
-	}*/
 
-	int kkk = 0;
-	while(poss[kkk] != "#")
-		kkk++;
-
-	for(auto m : states){
-		if(m.find(kkk) != m.end())
-			res.make_final(findIndex(stnames, m));
+	for(auto i : states){
+		if(i.second.find(cnt - 1) != i.second.end())
+			res.make_final(i.first);
 	}
+
 	return res;
 }

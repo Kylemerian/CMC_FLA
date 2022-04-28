@@ -6,15 +6,15 @@
 
 #IncludeRegexTransform: 
 
-/home/bel/fla/re2dfa/api.hpp
+/home/bel/CMC_FLA/re2dfa/api.hpp
 string
 -
 set
 -
 
-/home/bel/fla/re2dfa/task.cpp
+/home/bel/CMC_FLA/re2dfa/task.cpp
 api.hpp
-/home/bel/fla/re2dfa/api.hpp
+/home/bel/CMC_FLA/re2dfa/api.hpp
 string
 -
 iostream
@@ -24,5 +24,9 @@ stack
 algorithm
 -
 vector
+-
+map
+-
+set
 -
 
