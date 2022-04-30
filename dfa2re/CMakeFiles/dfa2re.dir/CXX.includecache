@@ -1,0 +1,26 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/bel/CMC_FLA/dfa2re/api.hpp
+string
+-
+set
+-
+
+/home/bel/CMC_FLA/dfa2re/task.cpp
+api.hpp
+/home/bel/CMC_FLA/dfa2re/api.hpp
+string
+-
+set
+-
+algorithm
+-
+iostream
+-
+
